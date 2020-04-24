@@ -1,0 +1,17 @@
+**/.Rproj.user
+**/.Rhistory
+**/.RData
+**/.Ruserdata
+**/.stversions
+**/.stignore
+**/.cepespdata
+**/*.txt
+**/*.csv
+**/*.ods
+**/*.xls
+**/*.xlsx
+**/*.rds
+**/*.7z
+**/*.zip
+**/antigos
+!etc/SIAB/*.csv
