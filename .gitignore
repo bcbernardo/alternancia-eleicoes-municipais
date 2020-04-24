@@ -13,5 +13,6 @@
 **/*.rds
 **/*.7z
 **/*.zip
+**/*.png
 **/antigos
 !etc/SIAB/*.csv
