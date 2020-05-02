@@ -95,7 +95,7 @@ model_GLM <- train(SITUACAO ~ . - GEOCOD_IBGE - Referencia, data = training,
                    method = "glm", trControl = ctrl, 
                    preProcess = c("center", "scale"))
 predict()
-saveRDS(model_GLM, "modelo_GML.rds")
+saveRDS(model_GLM, "modelo_GLM.rds")
 
 # Support Vector Machine
 set.seed(42)
