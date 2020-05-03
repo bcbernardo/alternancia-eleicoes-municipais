@@ -79,72 +79,70 @@ DT[, c(highlyCorrelated) :=NULL]
 set.seed(42)
 inTrain <- createDataPartition(y = DT$TOTAL_ELEITORES, p=2/3, 
                                groups = 10, list = F)
-
-# marcar registros para treino e validacao
-DT[!inTrain, Conjunto := "Validacao"]
-DT[inTrain, Conjunto := "Treino"]
 training <-  DT[inTrain,]
 
 ############################## TREINAR MODELOS #################################
 
-ctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+ctrl <- trainControl(method = "repeatedcv", number = 6, repeats = 5)
 
 # Modelos Lineares Generalizados
 set.seed(42)
-model_GLM <- train(SITUACAO ~ . - GEOCOD_IBGE - Referencia, data = training, 
-                   method = "glm", trControl = ctrl, 
+model_GLM <- train(SITUACAO ~ . - GEOCOD_IBGE - Referencia, 
+                   data = training, method = "glm", trControl = ctrl, 
                    preProcess = c("center", "scale"))
-predict()
 saveRDS(model_GLM, "modelo_GLM.rds")
 
 # Support Vector Machine
 set.seed(42)
-model_SVM <- train(SITUACAO ~ . - GEOCOD_IBGE - Referencia, data = training, 
-                  method = "svmLinear", trControl = ctrl, 
+model_SVM <- train(SITUACAO ~ . - GEOCOD_IBGE - Referencia, 
+                   data = training, method = "svmLinear", trControl = ctrl, 
                   preProcess = c("center", "scale"))
 saveRDS(model_SVM, "modelo_SVM.rds")
 
 # k-Nearest Neighbors
 set.seed(42)
-model_KNN <- train(SITUACAO ~ . - GEOCOD_IBGE - Referencia, data = training, 
-                   method = "knn", trControl = ctrl, 
+model_KNN <- train(SITUACAO ~ . - GEOCOD_IBGE - Referencia, 
+                   data = training, method = "knn", trControl = ctrl, 
                    preProcess = c("center", "scale"), tuneLength = 10)
 saveRDS(model_KNN, "modelo_KNN.rds")
 
 # Bagging
 set.seed(42)
-model_ADABAG <- train(SITUACAO ~ . - GEOCOD_IBGE - Referencia, data = training, 
-                  method = "AdaBag", trControl = ctrl, boos = TRUE, 
-                  coeflearn = "Breiman", preProcess = c("center", "scale"), 
-                  tuneLength = 10)
+model_ADABAG <- train(SITUACAO ~ . - GEOCOD_IBGE - Referencia, 
+                      data = training, method = "AdaBag", trControl = ctrl, 
+                      boos = TRUE, coeflearn = "Breiman", 
+                      preProcess = c("center", "scale"), tuneLength = 10)
 saveRDS(model_ADABAG, "modelo_ADABAG.rds")
+
+# Gradient Boosting Machines
+set.seed(42)
+model_GBM <- train(SITUACAO ~ . - GEOCOD_IBGE - Referencia, 
+                   data = training, method = "gbm", trControl = ctrl, 
+                   preProcess = c("center", "scale"), tuneLength = 10)
+saveRDS(model_GBM, "modelo_GBM.rds")
 
 # Extreme Gradient Boosting
 set.seed(42)
-model_GBM <- train(SITUACAO ~ . - GEOCOD_IBGE - Referencia, data = training, 
-                      method = "gbm", trControl = ctrl, #distribution = "gaussian",
-                      preProcess = c("center", "scale"), tuneLength = 10)
-saveRDS(model_GBM, "modelo_GBM.rds")
-
-# Random Forests
-set.seed(42)
-ctrl <- trainControl(method = "oob")
-model_RF <- train(SITUACAO ~ . - GEOCOD_IBGE - Referencia, data = training, 
-                   method = "rf", trControl = ctrl, 
+model_XGB <- train(SITUACAO ~ . - GEOCOD_IBGE - Referencia, 
+                   data = training, method = "xgbTree", trControl = ctrl, 
                    preProcess = c("center", "scale"), tuneLength = 10)
-saveRDS(model_RF, "modelo_RF.rds")
+saveRDS(model_XGB, "modelo_XGB.rds")
 
 
 ################################ ANALISAR RESULTADOS ###########################
 
+# marcar conjunto de treino e validacao
+DT[!inTrain, Conjunto := "Validacao"]
+DT[inTrain, Conjunto := "Treino"]
+
 # analise entre Folds de treinamento
 results <- resamples(list(GLM = model_GLM, SVM = model_SVM, KNN = model_KNN,
-                          ADABAG = model_ADABAG, GBM = model_GBM))
+                          ADABAG = model_ADABAG, GBM = model_GBM, XGB = model_XGB))
 scales <- list(x=list(relation="free"), y=list(relation="free"))
 bwplot(results, scales=scales)
 densityplot(results, scales)
 parallelplot(results)
-xyplot(results, models = c("SVM", "GLM"))
+xyplot(results, models = c("GBM", "XGB"))
 differences <- diff(results)
 
 # valores preditos pelos diferentes modelos
@@ -153,11 +151,11 @@ DT[, `:=`(predito_GLM = predict(model_GLM, newdata = DT),
           predito_KNN = predict(model_KNN, newdata = DT),
           predito_ADABAG = predict(model_ADABAG, newdata = DT),
           predito_GBM = predict(model_GBM, newdata = DT),
-          predito_RF = predict(model_RF, newdata = DT))]
-confusionMatrix(table(DT$SITUACAO, DT$predito_SVM))
+          predito_XGB = predict(model_XGB, newdata = DT))]
+confusionMatrix(table(DT$SITUACAO, DT$predito_XGB))
 
 performance <- data.table()
-for (method in c("GLM", "SVM", "KNN", "ADABAG", "GBM", "RF")) {
+for (method in c("GLM", "SVM", "KNN", "ADABAG", "GBM", "XGB")) {
   for (conj in c("Treino", "Validacao")) {
     confusion <- confusionMatrix(table(DT[Conjunto == conj, 
                                           c("SITUACAO", paste0("predito_", 
@@ -176,7 +174,7 @@ fwrite(performance[Dataset == "Treino", !c("Dataset")],
 fwrite(performance[Dataset == "Validacao", !c("Dataset")], 
        "performance-validacao.csv")
 
-parallelplot(~ performance[Dataset == "Validacao",c(4:21)], 
+parallelplot(~ performance[Dataset == "Validacao",c(4:20)], 
              performance[Dataset == "Validacao"], groups = Method, 
              scales = list(x=list(relation="free")), xlim = c(0, 1))
 #############
