@@ -66,7 +66,7 @@ remove(candidaturas, eleitorado, apoios, ideb, siab, stn, comm_cols, rais)
 ############################ PRE PROCESSAMENTO #################################
 
 # remover variaveis com variancia proxima de zero
-DT[, nearZeroVar(DT) := NULL]
+DT[, setdiff(nearZeroVar(DT, names = T), c("TURNO_2")) := NULL]
 
 # remover variaveis redundantes
 correlationMatrix <- cor(DT[,!c("GEOCOD_IBGE", "Referencia", "SITUACAO", 
