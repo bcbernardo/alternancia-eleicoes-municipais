@@ -1,8 +1,10 @@
 #################################### PREPARACAO ###############################
 
 # instalar e carregar pacote data.table
-if (!require("data.table")) install.packages("data.table")
+if (!require("data.table")) {install.packages("data.table")}
 library(data.table)
+
+if (!require("electionsBR")) {install.packages("electionsBR")}
 
 setDTthreads(8)
 setwd("D:/alternancia-eleicoes-municipais/etc/TSE")
@@ -57,14 +59,16 @@ for (year in c(2012, 2016)) {
     eleitorado_total <- eleitorado[, .(Referencia = year,
                                        TOTAL_ELEITORES = sum(QTD_ELEITORES)), 
                                    by = "GEOCOD_IBGE"]
-    eleitorado_total[TOTAL_ELEITORES > 200000, TURNO_2 := TRUE]
-    eleitorado_total[TOTAL_ELEITORES <= 200000, TURNO_2 := FALSE]
+    eleitorado_total[TOTAL_ELEITORES > 200000, TURNO_2 := 1L]
+    eleitorado_total[GEOCOD_IBGE %in% c(1400100, 1721000, 3205309), 
+                     TURNO_2 := 1L]
+    eleitorado_total[TOTAL_ELEITORES <= 200000, TURNO_2 := 0L]
     # variaveis para colunas
     eleitorado_sexo <- dcast(eleitorado, GEOCOD_IBGE ~ SEXO, 
                              value.var = "QTD_ELEITORES", fun.agg = sum)
     eleitorado_faixaetaria <- dcast(eleitorado, GEOCOD_IBGE ~ FAIXA_ETARIA, 
                                      value.var = "QTD_ELEITORES", fun.agg = sum)
-    eleitorado_escolaridade <- dcast(eleitorado[ACIMA_25==T,], 
+    eleitorado_escolaridade <- dcast(eleitorado[ACIMA_25 == T,], 
                                      GEOCOD_IBGE ~ ESCOLARIDADE, 
                                      value.var = "QTD_ELEITORES", fun.agg = sum)
     # variaveis como proporcoes
